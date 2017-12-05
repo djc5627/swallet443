@@ -19,6 +19,7 @@ import (
 	"strings"
 	"math/rand"
 	"github.com/pborman/getopt"
+	"bufio"
 	// There will likely be several mode APIs you need
 )
 
@@ -91,6 +92,12 @@ func createWallet(filename string) *wallet {
 	var wal443 wallet
 	wal443.filename = filename
 	wal443.masterPassword = make([]byte, 32, 32) // You need to take it from here
+
+	reader := bufio.NewReader(os.Stdin)
+  fmt.Println("Please enter the master password: ")
+  passIn, _ := reader.ReadString('\n')
+
+  fmt.Println("Your password is ", passIn)
 
 	// Return the wall
 	return &wal443
