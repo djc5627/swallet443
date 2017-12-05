@@ -95,9 +95,14 @@ func createWallet(filename string) *wallet {
 
 	reader := bufio.NewReader(os.Stdin)
   fmt.Println("Please enter the master password: ")
-  passIn, _ := reader.ReadString('\n')
+  passIn1, _ := reader.ReadString('\n')
 
-  fmt.Println("Your password is ", passIn)
+	fmt.Println("Please re-enter the master password: ")
+	passIn2, _ := reader.ReadString('\n')
+
+	if strings.Compare(passIn1, passIn2) == 0 {
+		fmt.Println("They match")
+	}
 
 	// Return the wall
 	return &wal443
