@@ -125,6 +125,13 @@ func loadWallet(filename string) *wallet {
 	// Setup the wallet
 	var wal443 wallet
 	// DO THE LOADING HERE
+	wal443.filename = filename
+	_, err := os.Open(filename)
+
+	if err != nil {
+		println("ERROR: The file doesn't exist!")
+	}
+
 
 	// Return the wall
 	return &wal443
@@ -142,7 +149,7 @@ func (wal443 wallet) saveWallet() bool {
 
 	// Setup the wallet
 	timeString := time.Now().String()
-	data := timeString + "||1||\n"
+	data := timeString + "||1||\n" + string(wal443.masterPassword)
 
 	file, err := os.OpenFile(wal443.filename, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
