@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"github.com/pborman/getopt"
 	"bufio"
+	//"io/ioutil"
 	// There will likely be several mode APIs you need
 )
 
@@ -104,6 +105,9 @@ func createWallet(filename string) *wallet {
 		fmt.Println("They match")
 	}
 
+	wal443.masterPassword = []byte(passIn2)
+
+
 	// Return the wall
 	return &wal443
 }
@@ -137,6 +141,9 @@ func loadWallet(filename string) *wallet {
 func (wal443 wallet) saveWallet() bool {
 
 	// Setup the wallet
+	println("testing")
+  //err := ioutil.WriteFile(wal443.filename, []byte("String test"), 0644)
+	os.Create("/tmp/yourfile")
 
 	// Return successfully
 	return true
