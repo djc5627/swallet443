@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"github.com/pborman/getopt"
 	"bufio"
-	//"io/ioutil"
+	"io/ioutil"
 	// There will likely be several mode APIs you need
 )
 
@@ -141,10 +141,21 @@ func loadWallet(filename string) *wallet {
 func (wal443 wallet) saveWallet() bool {
 
 	// Setup the wallet
-	println("testing")
-  //err := ioutil.WriteFile(wal443.filename, []byte("String test"), 0644)
-	os.Create("/tmp/yourfile")
+	timeString := time.Now().String()
+	data := timeString + "||1||\n"
 
+	file, err := os.OpenFile(wal443.filename, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+	  ioutil.WriteFile(wal443.filename, []byte(data), 0644)
+	} else {
+		println("ERROR: Already created!")
+	}
+
+	defer file.Close()
+
+	//if _, err = file.WriteString("This was appended\n"); err != nil {
+	//    panic(err)
+	//}
 	// Return successfully
 	return true
 }
