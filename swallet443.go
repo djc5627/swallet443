@@ -126,11 +126,24 @@ func loadWallet(filename string) *wallet {
 	var wal443 wallet
 	// DO THE LOADING HERE
 	wal443.filename = filename
-	_, err := os.Open(filename)
+	f, err := os.Open(filename)
+
+	defer f.Close()
 
 	if err != nil {
 		println("ERROR: The file doesn't exist!")
 	}
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	fmt.Printf("Line count is: %d\n" , len(lines))
+	println(lines[1])
+	splitLine := strings.Split(lines[1], "||")
+	println(splitLine[0] + splitLine[1] + splitLine[2] + splitLine[3])
 
 
 	// Return the wall
