@@ -21,6 +21,7 @@ import (
 	"github.com/pborman/getopt"
 	"bufio"
 	"io/ioutil"
+	"strconv"
 	// There will likely be several mode APIs you need
 )
 
@@ -141,9 +142,17 @@ func loadWallet(filename string) *wallet {
 	}
 
 	fmt.Printf("Line count is: %d\n" , len(lines))
-	println(lines[1])
-	splitLine := strings.Split(lines[1], "||")
-	println(splitLine[0] + splitLine[1] + splitLine[2] + splitLine[3])
+
+
+	for i:=1; i<len(lines)-1; i++ {
+		splitLine := strings.Split(lines[i], "||")
+		var  temp walletEntry
+		temp.salt = []byte(splitLine[1])
+    temp.password = []byte(splitLine[2])
+		temp.comment = []byte(splitLine[3])
+		wal443.passwords = append(wal443.passwords,temp)
+		println(string(temp.salt) + string(temp.password) + string(temp.comment))
+	}
 
 
 	// Return the wall
@@ -162,13 +171,35 @@ func (wal443 wallet) saveWallet() bool {
 
 	// Setup the wallet
 	timeString := time.Now().String()
-	data := timeString + "||1||\n" + string(wal443.masterPassword)
 
-	file, err := os.OpenFile(wal443.filename, os.O_APPEND|os.O_WRONLY, 0600)
+	file, err := os.Open(wal443.filename)
 	if err != nil {
+		data := timeString + "||1||\n" + string(wal443.masterPassword)
 	  ioutil.WriteFile(wal443.filename, []byte(data), 0644)
 	} else {
-		println("ERROR: Already created!")
+		var lines []string
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+		println(lines[0])
+		splitLine := strings.Split(lines[0], "||")
+		accessInt, _ := strconv.Atoi(splitLine[1])
+		accessCount :=  accessInt + 1
+    println("AccessCount = " + strconv.Itoa(accessCount))
+
+		var writeLines string
+		firstLine := timeString + "||" + strconv.Itoa(accessCount) + "||"
+		writeLines = firstLine + "\n"
+		var currentLine string
+		for i:=0; i<len(wal443.passwords); i++ {
+			currentLine =  strconv.Itoa(i) + "||" + string(wal443.passwords[i].salt) + "||" + string(wal443.passwords[i].password) + "||" + string(wal443.passwords[i].comment)
+			writeLines = writeLines + currentLine + "\n"
+		}
+
+		ioutil.WriteFile(wal443.filename, []byte(writeLines), 0644)
+
+
 	}
 
 	defer file.Close()
