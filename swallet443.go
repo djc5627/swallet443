@@ -154,6 +154,8 @@ func loadWallet(filename string) *wallet {
 		println(string(temp.salt) + string(temp.password) + string(temp.comment))
 	}
 
+	wal443.masterPassword = []byte(lines[len(lines)-1])
+
 
 	// Return the wall
 	return &wal443
@@ -168,6 +170,7 @@ func loadWallet(filename string) *wallet {
 // Outputs      : true if successful test, false if failure
 
 func (wal443 wallet) saveWallet() bool {
+	println("Wallet Len = " + strconv.Itoa(len(wal443.passwords)))
 
 	// Setup the wallet
 	timeString := time.Now().String()
@@ -192,11 +195,11 @@ func (wal443 wallet) saveWallet() bool {
 		firstLine := timeString + "||" + strconv.Itoa(accessCount) + "||"
 		writeLines = firstLine + "\n"
 		var currentLine string
-		for i:=0; i<len(wal443.passwords); i++ {
+		for i:=0; i < len(wal443.passwords); i++ {
 			currentLine =  strconv.Itoa(i) + "||" + string(wal443.passwords[i].salt) + "||" + string(wal443.passwords[i].password) + "||" + string(wal443.passwords[i].comment)
 			writeLines = writeLines + currentLine + "\n"
 		}
-
+		writeLines = writeLines + string(wal443.masterPassword)
 		ioutil.WriteFile(wal443.filename, []byte(writeLines), 0644)
 
 
@@ -220,27 +223,110 @@ func (wal443 wallet) saveWallet() bool {
 //                command - the command to execute
 // Outputs      : true if successful test, false if failure
 
-func (wal443 wallet) processWalletCommand(command string) bool {
+func (wal443 *wallet) processWalletCommand(command string) bool {
 
 	// Process the command
 	switch command {
 	case "add":
 		// DO SOMETHING HERE, e.g., wal443.addPassword(...)
 
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
+
+		var  temp walletEntry
+		temp.salt = []byte("Salt")
+    temp.password = []byte("Password")
+		temp.comment = []byte("Comment")
+
+		wal443.passwords = append(wal443.passwords, temp)
+		wal443.passwords = append(wal443.passwords, temp)
+		println("Wallet Len = " + strconv.Itoa(len(wal443.passwords)))
+
 	case "del":
-		// DO SOMETHING HERE
+		deleteIndex := 4
+		before := wal443.passwords[0:deleteIndex]
+		after := wal443.passwords[deleteIndex+1:]
+
+		for i:=0;i<len(wal443.passwords);i++ {
+			println(string(wal443.passwords[i].comment))
+		}
+		//wal443.passwords = append(wal443.passwords[0:deleteIndex], wal443.passwords[deleteIndex+1:])
+		wal443.passwords = append(before,after...)
+		for i:=0;i<len(wal443.passwords);i++ {
+			println(string(wal443.passwords[i].comment))
+		}
+
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
 
 	case "show":
-		// DO SOMETHING HERE
+
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
 
 	case "chpw":
-		// DO SOMETHING HERE
+
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
 
 	case "reset":
-		// DO SOMETHING HERE
+
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
 
 	case "list":
-		// DO SOMETHING HERE
+
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
+
 
 	default:
 		// Handle error, return failure
