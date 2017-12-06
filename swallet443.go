@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"io/ioutil"
 	"strconv"
+	"github.com/nsf/termbox-go"
 	// There will likely be several mode APIs you need
 )
 
@@ -251,32 +252,25 @@ func (wal443 *wallet) processWalletCommand(command string) bool {
 		println("Wallet Len = " + strconv.Itoa(len(wal443.passwords)))
 
 	case "del":
+		reader := bufio.NewReader(os.Stdin)
+	  fmt.Println("Please enter the master password: ")
+	  passIn1, _ := reader.ReadString('\n')
+
+		fmt.Println("Please re-enter the master password: ")
+		passIn2, _ := reader.ReadString('\n')
+
+		if strings.Compare(passIn1, passIn2) == 0 {
+			fmt.Println("They match")
+		}
+
 		deleteIndex := 4
 		before := wal443.passwords[0:deleteIndex]
 		after := wal443.passwords[deleteIndex+1:]
-
-		for i:=0;i<len(wal443.passwords);i++ {
-			println(string(wal443.passwords[i].comment))
-		}
-		//wal443.passwords = append(wal443.passwords[0:deleteIndex], wal443.passwords[deleteIndex+1:])
 		wal443.passwords = append(before,after...)
-		for i:=0;i<len(wal443.passwords);i++ {
-			println(string(wal443.passwords[i].comment))
-		}
-
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
 
 	case "show":
 
+
 		reader := bufio.NewReader(os.Stdin)
 	  fmt.Println("Please enter the master password: ")
 	  passIn1, _ := reader.ReadString('\n')
@@ -287,6 +281,9 @@ func (wal443 *wallet) processWalletCommand(command string) bool {
 		if strings.Compare(passIn1, passIn2) == 0 {
 			fmt.Println("They match")
 		}
+
+		showIndex := 2
+		println(string(wal443.passwords[showIndex].password))
 
 	case "chpw":
 
@@ -301,6 +298,12 @@ func (wal443 *wallet) processWalletCommand(command string) bool {
 			fmt.Println("They match")
 		}
 
+		changeIndex := 2
+		newPass := "newPassword"
+
+		wal443.passwords[changeIndex].password = []byte(newPass)
+
+
 	case "reset":
 
 		reader := bufio.NewReader(os.Stdin)
@@ -314,6 +317,10 @@ func (wal443 *wallet) processWalletCommand(command string) bool {
 			fmt.Println("They match")
 		}
 
+		newMasterPass := "pass"
+
+		wal443.masterPassword = []byte(newMasterPass)
+
 	case "list":
 
 		reader := bufio.NewReader(os.Stdin)
@@ -326,6 +333,11 @@ func (wal443 *wallet) processWalletCommand(command string) bool {
 		if strings.Compare(passIn1, passIn2) == 0 {
 			fmt.Println("They match")
 		}
+
+		for i:=0;i<len(wal443.passwords);i++ {
+			println(strconv.Itoa(i) + ": " + string(wal443.passwords[i].comment))
+		}
+
 
 
 	default:
