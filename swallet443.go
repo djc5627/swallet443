@@ -4,8 +4,8 @@
 //  Description    : This is the implementaiton file for the swallet password
 //                   wallet program program.  See assignment details.
 //
-//  Collaborators  : **TODO**: FILL ME IN
-//  Last Modified  : **TODO**: FILL ME IN
+//  Collaborators  : James Frazier, Daniel Colom, James Cunningham, Sahil Mishra
+//  Last Modified  : 12/6/17
 //
 
 // Package statement
@@ -20,8 +20,15 @@ import (
 	"math/rand"
 	"github.com/pborman/getopt"
 	"bufio"
+	"io"
 	"io/ioutil"
 	"strconv"
+	"crypto/sha1"
+	"crypto/hmac"
+	"crypto/aes"
+	cryptorand "crypto/rand"
+	//"reflect"
+	"encoding/base64"
 	//"github.com/nsf/termbox-go"
 	// There will likely be several mode APIs you need
 )
@@ -96,6 +103,7 @@ func createWallet(filename string) *wallet {
 	wal443.filename = filename
 	wal443.masterPassword = make([]byte, 32, 32) // You need to take it from here
 
+	// Confirm master password from user input
 	reader := bufio.NewReader(os.Stdin)
   fmt.Println("Please enter the master password: ")
   passIn1, _ := reader.ReadString('\n')
@@ -126,39 +134,41 @@ func loadWallet(filename string) *wallet {
 
 	// Setup the wallet
 	var wal443 wallet
-	// DO THE LOADING HERE
+
+	//Open wallet file for loading
 	wal443.filename = filename
 	f, err := os.Open(filename)
-
 	defer f.Close()
 
+	//Check if wallet file exists
 	if err != nil {
 		println("ERROR: The file doesn't exist!")
+	} else {
+		// Store all lines of wallet file in string array
+		var lines []string
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
+
+		fmt.Printf("Line count is: %d\n" , len(lines))
+
+		// Split the scanned lines into password fields
+		for i:=1; i<len(lines)-1; i++ {
+			splitLine := strings.Split(lines[i], "||")
+			var  temp walletEntry
+			temp.salt = []byte(splitLine[1])
+	    temp.password = []byte(splitLine[2])
+			temp.comment = []byte(splitLine[3])
+			wal443.passwords = append(wal443.passwords,temp)
+			println(string(temp.salt) + string(temp.password) + string(temp.comment))
+		}
+
+		// Extract master password HMAC from last line
+		wal443.masterPassword = []byte(lines[len(lines)-1])
 	}
 
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	fmt.Printf("Line count is: %d\n" , len(lines))
-
-
-	for i:=1; i<len(lines)-1; i++ {
-		splitLine := strings.Split(lines[i], "||")
-		var  temp walletEntry
-		temp.salt = []byte(splitLine[1])
-    temp.password = []byte(splitLine[2])
-		temp.comment = []byte(splitLine[3])
-		wal443.passwords = append(wal443.passwords,temp)
-		println(string(temp.salt) + string(temp.password) + string(temp.comment))
-	}
-
-	wal443.masterPassword = []byte(lines[len(lines)-1])
-
-
-	// Return the wall
+	// Return the wallet
 	return &wal443
 }
 
@@ -176,22 +186,34 @@ func (wal443 wallet) saveWallet() bool {
 	// Setup the wallet
 	timeString := time.Now().String()
 
+	// Open the wallet file
 	file, err := os.Open(wal443.filename)
+	// If error opening (files doesn't exist) instantiate first line, else update it
 	if err != nil {
-		data := timeString + "||1||\n" + string(wal443.masterPassword)
-	  ioutil.WriteFile(wal443.filename, []byte(data), 0644)
+		firstLine := timeString + "||1||\n"
+		// Create and store HMAC
+		sha1pass := sha1.New()
+		io.WriteString(sha1pass, string(wal443.masterPassword))
+		wal443.masterPassword = sha1pass.Sum(nil)[:16]
+		mac := hmac.New(sha1.New, wal443.masterPassword)
+		mac.Write([]byte(firstLine))
+		lastLine := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	  ioutil.WriteFile(wal443.filename, []byte(firstLine + lastLine), 0644)
 	} else {
+		// Read lines from existing wallet file
 		var lines []string
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			lines = append(lines, scanner.Text())
 		}
 		println(lines[0])
+		// Process first line; Update access count
 		splitLine := strings.Split(lines[0], "||")
 		accessInt, _ := strconv.Atoi(splitLine[1])
 		accessCount :=  accessInt + 1
     println("AccessCount = " + strconv.Itoa(accessCount))
 
+		// Prepare writeLines for Write-back; prepare first line and passwords
 		var writeLines string
 		firstLine := timeString + "||" + strconv.Itoa(accessCount) + "||"
 		writeLines = firstLine + "\n"
@@ -200,7 +222,20 @@ func (wal443 wallet) saveWallet() bool {
 			currentLine =  strconv.Itoa(i) + "||" + string(wal443.passwords[i].salt) + "||" + string(wal443.passwords[i].password) + "||" + string(wal443.passwords[i].comment)
 			writeLines = writeLines + currentLine + "\n"
 		}
-		writeLines = writeLines + string(wal443.masterPassword)
+
+		// Create the last line; use HMAC
+		sha1pass := sha1.New()
+		io.WriteString(sha1pass, string(wal443.masterPassword))
+		wal443.masterPassword = sha1pass.Sum(nil)[:16]
+		mac := hmac.New(sha1.New, wal443.masterPassword)
+		mac.Write([]byte(writeLines))
+		lastLine := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+		fmt.Printf("Write lines:" + writeLines)
+
+		// Append last line and write-back
+		writeLines = writeLines + lastLine
+
 		ioutil.WriteFile(wal443.filename, []byte(writeLines), 0644)
 
 
@@ -226,128 +261,92 @@ func (wal443 wallet) saveWallet() bool {
 
 func (wal443 *wallet) processWalletCommand(command string) bool {
 
-	// Process the command
-	switch command {
-	case "add":
-		// DO SOMETHING HERE, e.g., wal443.addPassword(...)
+	// Confirm master password from userInput
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Please enter the master password: ")
+	passIn, _ := reader.ReadString('\n')
 
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
+	// Open wallet file and scan all lines into string array
+	file, _ := os.Open(wal443.filename)
+	defer file.Close()
 
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		var  temp walletEntry
-		temp.salt = []byte("Salt")
-    temp.password = []byte("Password")
-		temp.comment = []byte("Comment")
-
-		wal443.passwords = append(wal443.passwords, temp)
-		wal443.passwords = append(wal443.passwords, temp)
-		println("Wallet Len = " + strconv.Itoa(len(wal443.passwords)))
-
-	case "del":
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		deleteIndex := 4
-		before := wal443.passwords[0:deleteIndex]
-		after := wal443.passwords[deleteIndex+1:]
-		wal443.passwords = append(before,after...)
-
-	case "show":
-
-
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		showIndex := 2
-		println(string(wal443.passwords[showIndex].password))
-
-	case "chpw":
-
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		changeIndex := 2
-		newPass := "newPassword"
-
-		wal443.passwords[changeIndex].password = []byte(newPass)
-
-
-	case "reset":
-
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		newMasterPass := "pass"
-
-		wal443.masterPassword = []byte(newMasterPass)
-
-	case "list":
-
-		reader := bufio.NewReader(os.Stdin)
-	  fmt.Println("Please enter the master password: ")
-	  passIn1, _ := reader.ReadString('\n')
-
-		fmt.Println("Please re-enter the master password: ")
-		passIn2, _ := reader.ReadString('\n')
-
-		if strings.Compare(passIn1, passIn2) == 0 {
-			fmt.Println("They match")
-		}
-
-		for i:=0;i<len(wal443.passwords);i++ {
-			println(strconv.Itoa(i) + ": " + string(wal443.passwords[i].comment))
-		}
-
-
-
-	default:
-		// Handle error, return failure
-		fmt.Fprintf(os.Stderr, "Bad/unknown command for wallet [%s], aborting.\n", command)
-		return false
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
 	}
 
-	// Return sucessfull
-	return true
+	// Prepare all preceeding lines into string for HMAC generation
+	var preceeding string
+	for i:=0;i<len(lines)-1;i++ {
+		preceeding = preceeding + lines[i] + "\n"
+	}
+
+	//create HMAC from user input
+	fmt.Printf("preceeding is :" + preceeding)
+	sha1pass := sha1.New()
+	io.WriteString(sha1pass, string(passIn))
+	tempSha := sha1pass.Sum(nil)[:16]
+	mac := hmac.New(sha1.New, tempSha)
+	mac.Write([]byte(preceeding))
+	finalHmac := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	println("The final hmac is -> " + finalHmac + "\n")
+
+	//Compare HMAC from User input to stored HMAC
+	if strings.Compare(finalHmac, lines[len(lines)-1]) == 0 {
+		wal443.masterPassword = []byte(passIn)
+		// Process the command
+		switch command {
+		case "add":
+			// DO SOMETHING HERE, e.g., wal443.addPassword(...)
+			var  temp walletEntry
+			temp.salt = make([]byte, 16)
+			io.ReadFull(cryptorand.Reader, temp.salt)
+			temp.salt = []byte(base64.StdEncoding.EncodeToString(temp.salt))
+			temp.password = []byte("Password")
+			temp.comment = []byte("Comment")
+
+			wal443.passwords = append(wal443.passwords, temp)
+			println("Wallet Len = " + strconv.Itoa(len(wal443.passwords)))
+
+		case "del":
+			deleteIndex := 4
+			before := wal443.passwords[0:deleteIndex]
+			after := wal443.passwords[deleteIndex+1:]
+			wal443.passwords = append(before,after...)
+
+		case "show":
+			showIndex := 2
+			println(string(wal443.passwords[showIndex].password))
+
+		case "chpw":
+			changeIndex := 2
+			newPass := "newPassword"
+
+			wal443.passwords[changeIndex].password = []byte(newPass)
+
+
+		case "reset":
+			newMasterPass := "pass"
+
+			wal443.masterPassword = []byte(newMasterPass)
+
+		case "list":
+			for i:=0;i<len(wal443.passwords);i++ {
+				println(strconv.Itoa(i) + ": " + string(wal443.passwords[i].comment))
+			}
+
+		default:
+			// Handle error, return failure
+			fmt.Fprintf(os.Stderr, "Bad/unknown command for wallet [%s], aborting.\n", command)
+			return false
+		}
+		return true
+
+	} else {
+		println("Incorrect Password! Stopping...")
+		return false
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
